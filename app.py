@@ -18,21 +18,21 @@ st.set_page_config(
 st.title("Dashboard Prediksi Risiko Kanker Paru-paru")
 st.write("Masukkan data responden untuk memprediksi kemungkinan mengidap kanker paru-paru.")
 
+# --- EVALUASI MODEL ---
 st.markdown("---")
 st.subheader("Evaluasi Model")
 
 # Load dataset
 data = pd.read_csv('survey_lung_cancer_updated.csv')
+data.columns = data.columns.str.strip()  # Hapus spasi di nama kolom
 
-# Tampilkan unique value kolom untuk pengecekan
+# Cek data unik untuk validasi awal
 st.write("Unique value GENDER:", data['GENDER'].unique())
 st.write("Unique value ANXIETY:", data['ANXIETY'].unique())
 
 # Persiapan data
 X = data.drop('LUNG_CANCER', axis=1)
 y = data['LUNG_CANCER']
-
-# Prediksi
 y_pred = model.predict(X)
 y_prob = model.predict_proba(X)[:, 1]
 
@@ -43,14 +43,14 @@ rec = recall_score(y, y_pred, zero_division=0)
 f1 = f1_score(y, y_pred, zero_division=0)
 roc_auc = roc_auc_score(y, y_prob)
 
-# Tampilkan metrik evaluasi
+# Tampilkan metrik
 col1, col2, col3, col4 = st.columns(4)
 col1.success(f"Accuracy: **{acc:.2f}**")
 col2.info(f"Precision: **{prec:.2f}**")
 col3.warning(f"Recall: **{rec:.2f}**")
 col4.error(f"ROC AUC: **{roc_auc:.2f}**")
 
-# Grafik ROC dan Confusion Matrix
+# ROC Curve dan Confusion Matrix
 plot_option = st.selectbox("Pilih grafik untuk ditampilkan:", ["Pilih", "ROC AUC Curve", "Confusion Matrix"])
 if plot_option == "ROC AUC Curve":
     st.subheader("ROC Curve")
@@ -73,27 +73,15 @@ elif plot_option == "Confusion Matrix":
     ax.set_ylabel('Actual')
     st.pyplot(fig)
 
-st.markdown("---")
-st.subheader("Analisis Rumusan Masalah")
 
-# Analisis Risiko berdasarkan Gender
+# Risiko berdasarkan Gender
 risk_by_gender = data.groupby('GENDER')['LUNG_CANCER'].mean().reset_index()
 male_data = risk_by_gender[risk_by_gender['GENDER'] == 'MALE']
 female_data = risk_by_gender[risk_by_gender['GENDER'] == 'FEMALE']
 
-if not male_data.empty:
-    st.write(f"Rata-rata risiko kanker paru-paru laki-laki: {male_data['LUNG_CANCER'].values[0]:.2f}")
-else:
-    st.write("Data laki-laki tidak ditemukan.")
 
-if not female_data.empty:
-    st.write(f"Rata-rata risiko kanker paru-paru perempuan: {female_data['LUNG_CANCER'].values[0]:.2f}")
-else:
-    st.write("Data perempuan tidak ditemukan.")
 
-st.markdown("-----")
-
-# Analisis Risiko berdasarkan Anxiety
+# Risiko berdasarkan Anxiety
 risk_by_anxiety = data.groupby('ANXIETY')['LUNG_CANCER'].mean().reset_index()
 anxiety_yes = risk_by_anxiety[risk_by_anxiety['ANXIETY'] == 'YES']
 anxiety_no = risk_by_anxiety[risk_by_anxiety['ANXIETY'] == 'NO']
@@ -108,6 +96,7 @@ if not anxiety_no.empty:
 else:
     st.write("Data anxiety NO tidak ditemukan.")
 
+# --- PREDIKSI INDIVIDU ---
 st.markdown("---")
 st.subheader("Prediksi Risiko Individu")
 
@@ -127,10 +116,9 @@ with st.form("prediction_form"):
     SHORTNESS_OF_BREATH = st.selectbox("Sesak napas?", ["YES", "NO"])
     SWALLOWING_DIFFICULTY = st.selectbox("Sulit menelan?", ["YES", "NO"])
     CHEST_PAIN = st.selectbox("Nyeri dada?", ["YES", "NO"])
-
     submit = st.form_submit_button("Prediksi")
 
-# Mapping input ke bentuk numerik
+# Mapping input
 def map_inputs():
     binary_map = {"YES": 1, "NO": 0, "MALE": 1, "FEMALE": 0}
     return pd.DataFrame([{
@@ -151,6 +139,7 @@ def map_inputs():
         'CHEST PAIN': binary_map[CHEST_PAIN]
     }])
 
+# Tampilkan hasil prediksi
 if submit:
     input_df = map_inputs()
     prob = model.predict_proba(input_df)[0][1]
@@ -159,3 +148,19 @@ if submit:
     st.subheader("Hasil Prediksi")
     st.write(f"Hasil prediksi: **{'Berpotensi Mengidap Kanker Paru-paru' if pred == 1 else 'Tidak Terindikasi Kanker Paru-paru'}**")
     st.write(f"Probabilitas kanker: **{prob:.2f}**")
+
+    # Visualisasi Probabilitas
+    st.subheader("Visualisasi Probabilitas")
+    labels = ['Tidak Terindikasi', 'Berpotensi Kanker']
+    probs = [1 - prob, prob]
+    prob_df = pd.DataFrame({
+        'Kategori': labels,
+        'Probabilitas': probs
+    })
+
+    fig3, ax3 = plt.subplots()
+    sns.barplot(x='Kategori', y='Probabilitas', data=prob_df, palette='Set2', ax=ax3)
+    ax3.set_ylim(0, 1)
+    ax3.set_ylabel('Probabilitas')
+    ax3.set_title('Probabilitas Prediksi Individu')
+    st.pyplot(fig3)
