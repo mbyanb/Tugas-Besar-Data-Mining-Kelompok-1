@@ -74,6 +74,29 @@ elif plot_option == "Confusion Matrix":
     st.pyplot(fig)
 
 st.markdown("---")
+st.subheader("Analisis Rumusan Masalah")
+
+# Analisis Risiko berdasarkan Gender
+risk_by_gender = data.groupby('GENDER')['LUNG_CANCER'].mean().reset_index()
+male_data = risk_by_gender[risk_by_gender['GENDER'] == 'MALE']
+female_data = risk_by_gender[risk_by_gender['GENDER'] == 'FEMALE']
+
+if not male_data.empty:
+    st.write(f"Rata-rata risiko kanker paru-paru laki-laki: {male_data['LUNG_CANCER'].values[0]:.2f}")
+else:
+    st.write("Data laki-laki tidak ditemukan.")
+
+if not female_data.empty:
+    st.write(f"Rata-rata risiko kanker paru-paru perempuan: {female_data['LUNG_CANCER'].values[0]:.2f}")
+else:
+    st.write("Data perempuan tidak ditemukan.")
+
+st.markdown("-----")
+
+# Analisis Risiko berdasarkan Anxiety
+risk_by_anxiety = data.groupby('ANXIETY')['LUNG_CANCER'].mean().reset_index()
+anxiety_yes = risk_by_anxiety[risk_by_anxiety['ANXIETY'] == 'YES']
+anxiety_no = risk_by_anxiety[risk_by_anxiety['ANXIETY'] == 'NO']
 
 if not anxiety_yes.empty:
     st.write(f"Rata-rata risiko kanker paru-paru untuk yang memiliki anxiety (YES): {anxiety_yes['LUNG_CANCER'].values[0]:.2f}")
