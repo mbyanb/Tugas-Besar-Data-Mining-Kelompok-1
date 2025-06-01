@@ -2,17 +2,13 @@
 import streamlit as st
 import pandas as pd
 import seaborn as sns
+import joblib
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-import joblib
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import classification_report, accuracy_score
-
-# Load model
-model = joblib.load('model.pkl')
 
 # ----------------------------------
 # Load & Preprocessing
@@ -21,6 +17,7 @@ model = joblib.load('model.pkl')
 def load_data():
     df = pd.read_csv("survey_lung_cancer.csv")
     df = df.dropna().drop_duplicates()
+    df.columns = df.columns.str.strip()  # Bersihkan spasi
 
     if df['LUNG_CANCER'].dtype == object:
         df['LUNG_CANCER'] = df['LUNG_CANCER'].str.upper()
@@ -48,6 +45,8 @@ if menu == "Ringkasan":
     st.write(df.head())
     st.write("Jumlah data:", df.shape[0])
     st.write("Jumlah fitur:", df.shape[1])
+    st.subheader("Statistik Deskriptif")
+    st.write(df.describe())
 
 # ----------------------------------
 # CLUSTERING
@@ -72,8 +71,11 @@ elif menu == "Clustering":
     st.pyplot(fig2)
 
     st.subheader("Heatmap Korelasi")
-    fig3, ax3 = plt.subplots(figsize=(10, 6))
-    sns.heatmap(df.drop(columns=['LUNG_CANCER']).corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax3)
+    corr_data = df.select_dtypes(include='number').drop(columns=['LUNG_CANCER'])
+    corr_data = corr_data.loc[:, corr_data.nunique() > 1]  # drop fitur konstan
+    corr_matrix = corr_data.corr()
+    fig3, ax3 = plt.subplots(figsize=(12, 10))
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", ax=ax3)
     st.pyplot(fig3)
 
 # ----------------------------------
@@ -82,18 +84,11 @@ elif menu == "Clustering":
 elif menu == "Supervised Learning":
     st.title("Model Supervised Learning")
 
-    # Pilih model
-    model_choice = st.selectbox("Model Sekarang", ["Naive Bayes"])
+    model_choice = st.selectbox("Model Sekarang", ["Naive Bayes"])  # Bisa ditambah Logistic Regression
 
-    # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-    # Inisialisasi dan latih model
-    #if model_choice == "Logistic Regression":
-        #model = LogisticRegression(max_iter=1000)
-    #else:
     model = GaussianNB()
-
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
 
@@ -105,29 +100,37 @@ elif menu == "Supervised Learning":
     st.text(classification_report(y_test, y_pred))
 
     # ===============================
-    # INPUT MANUAL + TOMBOL PREDIKSI
+    # INPUT MANUAL + PREDIKSI
     # ===============================
     st.subheader("Prediksi Baru (Manual Input)")
-    input_data = {}
-    for col in X.columns:
-        if df[col].nunique() <= 2:
-            input_data[col] = st.selectbox(f"{col}", [0, 1])
-        else:
-            min_val = int(df[col].min())
-            max_val = int(df[col].max())
-            input_data[col] = st.slider(f"{col}", min_val, max_val, int(df[col].mean()))
 
-    # Tombol Prediksi
+    input_data = {
+        'AGE': st.slider("Usia", int(df['AGE'].min()), int(df['AGE'].max()), int(df['AGE'].mean())),
+        'GENDER': st.radio("Jenis Kelamin", options={1: "Laki-laki", 0: "Perempuan"}, format_func=lambda x: {1: "Laki-laki", 0: "Perempuan"}[x]),
+        'SMOKING': st.radio("Merokok?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'YELLOW_FINGERS': st.radio("Jari Kuning?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'ANXIETY': st.radio("Kecemasan?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'PEER_PRESSURE': st.radio("Tekanan Teman Sebaya?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'CHRONIC DISEASE': st.radio("Penyakit Kronis?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'FATIGUE': st.radio("Sering Lelah?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'ALLERGY': st.radio("Alergi?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'WHEEZING': st.radio("Sesak Napas (Wheezing)?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'ALCOHOL CONSUMING': st.radio("Konsumsi Alkohol?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'COUGHING': st.radio("Batuk Kronis?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'SHORTNESS OF BREATH': st.radio("Sesak Napas?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'SWALLOWING DIFFICULTY': st.radio("Sulit Menelan?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+        'CHEST PAIN': st.radio("Nyeri Dada?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    }
+
     if st.button("Predict"):
-        sample = pd.DataFrame([input_data])
+        sample = pd.DataFrame([input_data])[X.columns]  # cocokkan urutan kolom
         pred = model.predict(sample)[0]
         st.success(f"Hasil Prediksi: {'YES' if pred == 1 else 'NO'}")
 
-        if model_choice == "Naive Bayes":
-            probs = model.predict_proba(sample)[0]
-            st.info(f"Peluang Tidak Kanker: {probs[0]*100:.2f}%")
-            st.info(f"Peluang Kanker: {probs[1]*100:.2f}%")
+        probs = model.predict_proba(sample)[0]
+        st.info(f"Peluang Tidak Kanker: {probs[0]*100:.2f}%")
+        st.info(f"Peluang Kanker: {probs[1]*100:.2f}%")
 
-            st.subheader("Rata-rata Fitur untuk Kelas")
-            means_df = pd.DataFrame(model.theta_, columns=X.columns, index=['NO', 'YES'])
-            st.dataframe(means_df)
+        st.subheader("Rata-rata Fitur untuk Kelas")
+        means_df = pd.DataFrame(model.theta_, columns=X.columns, index=['NO', 'YES'])
+        st.dataframe(means_df)
