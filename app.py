@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 import joblib
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split
@@ -99,38 +100,78 @@ elif menu == "Supervised Learning":
     st.subheader("Classification Report")
     st.text(classification_report(y_test, y_pred))
 
-    # ===============================
-    # INPUT MANUAL + PREDIKSI
-    # ===============================
-    st.subheader("Prediksi Baru (Manual Input)")
+from sklearn.linear_model import LogisticRegression
 
-    input_data = {
-        'AGE': st.slider("Usia", int(df['AGE'].min()), int(df['AGE'].max()), int(df['AGE'].mean())),
-        'GENDER': st.radio("Jenis Kelamin", options={1: "Laki-laki", 0: "Perempuan"}, format_func=lambda x: {1: "Laki-laki", 0: "Perempuan"}[x]),
-        'SMOKING': st.radio("Merokok?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'YELLOW_FINGERS': st.radio("Jari Kuning?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'ANXIETY': st.radio("Kecemasan?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'PEER_PRESSURE': st.radio("Tekanan Teman Sebaya?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'CHRONIC DISEASE': st.radio("Penyakit Kronis?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'FATIGUE': st.radio("Sering Lelah?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'ALLERGY': st.radio("Alergi?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'WHEEZING': st.radio("Sesak Napas (Wheezing)?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'ALCOHOL CONSUMING': st.radio("Konsumsi Alkohol?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'COUGHING': st.radio("Batuk Kronis?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'SHORTNESS OF BREATH': st.radio("Sesak Napas?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'SWALLOWING DIFFICULTY': st.radio("Sulit Menelan?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-        'CHEST PAIN': st.radio("Nyeri Dada?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
-    }
+# ===============================
+# Training Logistic Regression with balanced class weights
+# ===============================
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+model = LogisticRegression(max_iter=1000, class_weight='balanced')
+model.fit(X_train, y_train)
 
-    if st.button("Predict"):
-        sample = pd.DataFrame([input_data])[X.columns]  # cocokkan urutan kolom
+# ===============================
+# PREDIKSI MANUAL
+# ===============================
+st.subheader("Prediksi Baru (Manual Input)")
+
+input_data = {
+    'AGE': st.slider("Usia", int(df['AGE'].min()), int(df['AGE'].max()), int(df['AGE'].mean())),
+    'GENDER': st.radio("Jenis Kelamin", options={1: "Laki-laki", 0: "Perempuan"}, format_func=lambda x: {1: "Laki-laki", 0: "Perempuan"}[x]),
+    'SMOKING': st.radio("Merokok?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'YELLOW_FINGERS': st.radio("Jari Kuning?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'ANXIETY': st.radio("Kecemasan?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'PEER_PRESSURE': st.radio("Tekanan Teman Sebaya?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'CHRONIC DISEASE': st.radio("Penyakit Kronis?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'FATIGUE': st.radio("Sering Lelah?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'ALLERGY': st.radio("Alergi?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'WHEEZING': st.radio("Sesak Napas (Wheezing)?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'ALCOHOL CONSUMING': st.radio("Konsumsi Alkohol?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'COUGHING': st.radio("Batuk Kronis?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'SHORTNESS OF BREATH': st.radio("Sesak Napas?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'SWALLOWING DIFFICULTY': st.radio("Sulit Menelan?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+    'CHEST PAIN': st.radio("Nyeri Dada?", [1, 0], format_func=lambda x: "Ya" if x == 1 else "Tidak"),
+}
+
+if st.button("Predict"):
+    try:
+        sample = pd.DataFrame([input_data])[X.columns]
         pred = model.predict(sample)[0]
-        st.success(f"Hasil Prediksi: {'YES' if pred == 1 else 'NO'}")
-
         probs = model.predict_proba(sample)[0]
-        st.info(f"Peluang Tidak Kanker: {probs[0]*100:.2f}%")
-        st.info(f"Peluang Kanker: {probs[1]*100:.2f}%")
 
-        st.subheader("Rata-rata Fitur untuk Kelas")
-        means_df = pd.DataFrame(model.theta_, columns=X.columns, index=['NO', 'YES'])
-        st.dataframe(means_df)
+        st.success(f"Hasil Prediksi: {'YES (Kanker)' if pred == 1 else 'NO (Tidak Kanker)'}")
+
+        if probs[0] >= 0.7:
+            st.success(f"Peluang Tidak Kanker: {probs[0]*100:.2f}%")
+        elif 0.4 <= probs[0] < 0.7:
+            st.warning(f"Peluang Tidak Kanker: {probs[0]*100:.2f}%")
+        else:
+            st.error(f"Peluang Tidak Kanker: {probs[0]*100:.2f}%")
+
+        if probs[1] >= 0.7:
+            st.error(f"Peluang Kanker: {probs[1]*100:.2f}%")
+        elif 0.4 <= probs[1] < 0.7:
+            st.warning(f"Peluang Kanker: {probs[1]*100:.2f}%")
+        else:
+            st.success(f"Peluang Kanker: {probs[1]*100:.2f}%")
+
+        st.subheader("Analisis Gejala Risiko")
+        gejala_utama = [
+            'SMOKING', 'YELLOW_FINGERS', 'ANXIETY', 'PEER_PRESSURE',
+            'CHRONIC DISEASE', 'FATIGUE', 'ALLERGY', 'WHEEZING',
+            'ALCOHOL CONSUMING', 'COUGHING', 'SHORTNESS OF BREATH',
+            'SWALLOWING DIFFICULTY', 'CHEST PAIN'
+        ]
+
+        peningkat_risiko = [g.replace("_", " ").title() for g in gejala_utama if input_data[g] == 1]
+        penurun_risiko = [g.replace("_", " ").title() for g in gejala_utama if input_data[g] == 0]
+
+        if peningkat_risiko:
+            st.warning("⚠ Faktor yang meningkatkan risiko berdasarkan input Anda:")
+            for item in peningkat_risiko:
+                st.markdown(f"- {item}")
+        if penurun_risiko:
+            st.success("✅ Faktor yang menurunkan risiko berdasarkan input Anda:")
+            for item in penurun_risiko:
+                st.markdown(f"- {item}")
+    except Exception as e:
+        st.error(f"Terjadi kesalahan saat memproses input: {e}")
